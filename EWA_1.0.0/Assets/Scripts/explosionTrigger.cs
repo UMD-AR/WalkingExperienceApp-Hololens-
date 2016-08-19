@@ -9,6 +9,7 @@ public class explosionTrigger : MonoBehaviour
     float t;
     public static float removeTimeLimit = 3f, backUpRemoveTimeLimit = 3 * removeTimeLimit; // in seconds
     public static float minImpulse = 0.0f;
+	public static bool alive = true;
 
     // Use this for initialization
     void Start()
@@ -37,6 +38,7 @@ public class explosionTrigger : MonoBehaviour
                 {
                     // remove this piece
                     gameObject.SetActive(false);
+					alive = false;
                 }
             }
         }
