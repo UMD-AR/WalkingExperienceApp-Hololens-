@@ -23,7 +23,7 @@ public class explosionTrigger : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-
+		Debug.Log ("Explo Updateeee collided == " + collided);
         // if the collision has happened
         if (collided)
         {
@@ -46,8 +46,10 @@ public class explosionTrigger : MonoBehaviour
 
     void OnCollisionEnter(Collision collision)
     {
+		
         if (collision.collider.name.Equals("Wall") && !collided && collision.impulse.magnitude >= minImpulse)
         {
+			Debug.Log ("Cooooollliddedddd");
             collided = true;
             rb.useGravity = true;
             // create point of explosion between knees

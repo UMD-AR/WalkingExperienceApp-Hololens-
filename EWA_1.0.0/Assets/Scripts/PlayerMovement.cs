@@ -3,11 +3,11 @@ using System.Collections;
 
 public class PlayerMovement : MonoBehaviour {
 	public float speed = 10.0f;
-	Rigidbody playerRigidbody;  
+//	Rigidbody playerRigidbody;  
 	// Use this for initialization
 	void Start () {
 		Cursor.lockState = CursorLockMode.Locked;
-		playerRigidbody = GetComponent <Rigidbody> ();
+//		playerRigidbody = GetComponent <Rigidbody> ();
 	}
 	
 	// Update is called once per frame
