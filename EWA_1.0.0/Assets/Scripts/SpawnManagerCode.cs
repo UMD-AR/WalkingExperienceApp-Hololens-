@@ -14,13 +14,20 @@ public class SpawnManagerCode : MonoBehaviour {
 	}
 
 	void Spawn () {
-		if (count < max) {
 			int spawnPointIndex = Random.Range (0, spawnPoints.Length);
 			Instantiate (steve, spawnPoints [spawnPointIndex].position, spawnPoints [spawnPointIndex].rotation);
 			count++;
-		} else if (explosionTrigger.alive == false) {
-			Debug.Log ("explosion");
-			count--;
+
+		if (count == max) {
+			Debug.Log ("MAX");
+			CancelInvoke ("Spawn");
+			count++;
+		}
+
+		if(count > max && explosionTrigger.alive == false){
+			Debug.Log ("Explosion");
+			Invoke ("Spawn", 15f);
+			count = 5;
 		}
 	}
 }

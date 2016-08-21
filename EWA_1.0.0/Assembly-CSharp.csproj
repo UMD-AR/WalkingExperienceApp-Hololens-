@@ -50,7 +50,6 @@
      <Compile Include="Assets\Scripts\RayLine.cs" />
      <Compile Include="Assets\Scripts\SpawnManagerCode.cs" />
      <Compile Include="Assets\Scripts\SteveController.cs" />
-     <Compile Include="Assets\Scripts\SteveMainController.cs" />
      <Compile Include="Assets\Scripts\explosionTrigger.cs" />
  <Reference Include="UnityEngine.UI">
  <HintPath>C:/Program Files/Unity/Editor/Data/UnityExtensions/Unity/GUISystem/UnityEngine.UI.dll</HintPath>
