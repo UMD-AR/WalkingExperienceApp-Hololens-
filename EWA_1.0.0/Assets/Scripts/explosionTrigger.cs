@@ -4,56 +4,65 @@ using System.Collections;
 public class explosionTrigger : MonoBehaviour
 {
 
-    Rigidbody rb;
-    public bool collided, removing;
-    float t;
-    public static float removeTimeLimit = 3f, backUpRemoveTimeLimit = 3 * removeTimeLimit; // in seconds
-    public static float minImpulse = 0.0f;
+    Rigidbody rb; // this objects rigidbody
+    bool steveCollided, alreadyExploding; // boolings to show if steve has collided and is exploding
 	public static bool alive = true;
+
+    Transform steve;
 
     // Use this for initialization
     void Start()
     {
-        t = 0;
-        collided = false;
-        removing = false;
-        rb = GetComponent<Rigidbody>();
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-
-        // if the collision has happened
-        if (collided)
+        if (this.name.Equals("Torso"))
         {
-            // start the timer
-            t += Time.deltaTime;
-
-            // if this piece has stopped moving or it has been to long
-            if (rb.velocity.magnitude == 0 || t > backUpRemoveTimeLimit)
-            {
-                // if this piece has been sitting still for long enough
-                if (t > removeTimeLimit)
-                {
-                    // remove this piece
-                    gameObject.SetActive(false);
-					alive = false;
-                }
-            }
+            steve = this.transform.parent.parent;
+            steveCollided = steve.GetComponent<SteveController>().collided;
+        }
+        else
+        {
+            steve = this.transform.parent.parent.parent;
+            steveCollided = steve.GetComponent<SteveController>().collided;
+        }
+        alreadyExploding = false;
+        rb = this.GetComponent<Rigidbody>();
+    }
+    
+    // OnCollisionEnter is called when there is a collision between two rigidbodies
+    void OnCollisionEnter(Collision collision)
+    {
+        // if steve hasn't collided with anything yet and collision calling this function is not with another body part or the floor
+        if (!steveCollided && !bodyPartOrFloor(collision.collider.name))
+        {
+            // steve has now collided!
+            steveCollided = true;
+            steve.GetComponent<SteveController>().collided = steveCollided;
         }
     }
 
-    void OnCollisionEnter(Collision collision)
+    // this method determines if the string sent to it is one of the
+    // body parts of the main character or the floor
+    bool bodyPartOrFloor(string s)
     {
-        if (collision.collider.name.Equals("Wall") && !collided && collision.impulse.magnitude >= minImpulse)
+        return s.Equals("Head")
+            || s.Equals("Torso")
+            || s.Equals("Right_Arm")
+            || s.Equals("Left_Arm")
+            || s.Equals("Right_Leg")
+            || s.Equals("Left_Leg")
+            || s.Equals("Floor");
+    }
+
+    // this method makes the body part this script is attached to explode
+    public void explode()
+    {
+        if (!alreadyExploding)
         {
-            collided = true;
+            alreadyExploding = true;
             rb.useGravity = true;
-            // create point of explosion between knees
-            GameObject torso = GameObject.Find("Torso"), leg = GameObject.Find("Right Leg");
-            Vector3 explosionPoint = new Vector3(torso.transform.position.x, leg.transform.position.y, torso.transform.position.z);
-            rb.AddExplosionForce(1000f, explosionPoint, 10f);
+            alive = false;
+            //GameObject torso = GameObject.Find("Torso"), leg = GameObject.Find("Right_Leg"); // create point of explosion between knees
+            //Vector3 explosionPoint = new Vector3(torso.transform.position.x, leg.transform.position.y, torso.transform.position.z);
+            rb.AddExplosionForce(400f, steve.position, 10f);
         }
     }
 }

@@ -31,19 +31,26 @@ public class SteveController : MonoBehaviour {
 	float tooClose = 7f;
 	float previousX, previousZ; // holds the previous position of the Camera, used to prevent the A.I. from getting to close
 
-	GameObject head, torso, rArm, lArm, rLeg, lLeg;
+    public bool collided = false;
+    GameObject[] bodyParts;
+    float timeAfterCollision;
 
 	void Start() {
+
 		animator = GetComponent<Animator>();
 		theCamera = Camera.main;
 		acceleration = walkSpeed / 10f;
 
-		head = GameObject.Find("Head");
-        torso = GameObject.Find("Torso");
-        rArm = GameObject.Find("Right_Arm");
-        lArm = GameObject.Find("Left_Arm");
-        rLeg = GameObject.Find("Right_Leg");
-        lLeg = GameObject.Find("Left_Leg");
+        bodyParts = new GameObject[6];
+        bodyParts[0] = this.transform.Find("Armature").Find("Torso").gameObject;
+        for (int i = 1; i < bodyParts.Length; i++)
+        {
+            bodyParts[i] = bodyParts[0].transform.GetChild(i - 1).gameObject;
+        }
+        
+        collided = false;
+        timeAfterCollision = 0;
+
 	}
 
 	/*
@@ -55,191 +62,206 @@ public class SteveController : MonoBehaviour {
      */
 	void Update() {
 
-		 // if none of the pieces exist any more
-        if (!head.activeSelf &&
-                 !torso.activeSelf &&
-                 !rArm.activeSelf &&
-                 !lArm.activeSelf &&
-                 !rLeg.activeSelf &&
-                 !lLeg.activeSelf)
+        if (collided)
         {
-            // remove this instance of steve as well
-            gameObject.SetActive(false);
+            explosion();
         }
-		
-		//check to see if the character is too close to the player and not facing it and the A.I. is not already running away or about to run away
-		if (Vector3.Distance(theCamera.transform.position, this.transform.position) < tooClose && state != "close" && state != "scared" && (state != "turn" || playerDependent == "none")) {
-			state = "close";
-			previousX = theCamera.transform.position.x;
-			previousZ = theCamera.transform.position.z;
-			animator.ResetTrigger("walk");
-			animator.ResetTrigger("idle");
-			actionTimer = 0f;
-		}
-		//can the player to close to the A.I. and can the player see the A.I.
-		if (Vector3.Distance(theCamera.transform.position, this.transform.position) < closeDistance && state != "scared" && inFOV()) {
-			//change the state to turn
-			state = "turn";
-			if (playerDependent == "none") {
-				playerDependent = "toward";
-				animator.ResetTrigger("idle");
-			}
-		}
-		//check to see if the character is too far away from the player
-		else if (Vector3.Distance(theCamera.transform.position, this.transform.position) > medDistance && state != "run" && !inFOV()) 
-			state = "run";
-		//ensures the character does not turn toward the character by accidnet
-		else 
-			playerDependent = "none";
-		//Handles all the states the character can be in:
-		// walking, running, turning, and idling
-		switch (state) {
-		//stick to the player
-		case "close":
-			animator.SetTrigger("idle");
-			//has the player moved since the last update
-			if (previousZ - theCamera.transform.position.z != 0 || previousX - theCamera.transform.position.z != 0) {
-				//has the player gotten closer to the A.I.
-				if (Vector3.Distance(this.transform.position, new Vector3(previousX, this.transform.position.y, previousZ)) >= Vector3.Distance(this.transform.position, theCamera.transform.position)) {
-					//if so move the A.I. so that it is the same distance from the player as the last update
-					this.transform.position = new Vector3(this.transform.position.x + theCamera.transform.position.x - previousX, this.transform.position.y, this.transform.position.z + theCamera.transform.position.z - previousZ);
-				}
-				previousX = theCamera.transform.position.x;
-				previousZ = theCamera.transform.position.z;
-			}
-			//has the player moved far enough away to leave the close state
-			if (Vector3.Distance(this.transform.position, theCamera.transform.position) > tooClose) {
-				state = "idle";
-				actionTimer = 3f;
-			}
-			break;
-			//walk in the direction the A.I. is currently facing
-		case "walk":
-			//decrease walkTimer
-			if (actionTimer > Time.deltaTime) {
-				animator.SetTrigger("walk");
-				actionTimer -= Time.deltaTime;
-				accelerate(walkSpeed);
-				this.transform.position = new Vector3(this.transform.position.x + Time.deltaTime * currentSpeed * Mathf.Cos((thetaCorrection - this.transform.eulerAngles.y) * Mathf.PI / 180), this.transform.position.y, this.transform.position.z + Time.deltaTime * currentSpeed * Mathf.Sin((thetaCorrection - this.transform.eulerAngles.y) * Mathf.PI / 180));
-			}
-			//change state to idle
-			else {
-				actionTimer = 3f;
-				state = "idle";
-				Debug.Log("Changing states from Walk to Idle");
-				animator.ResetTrigger("walk");
-			}
-			break;
-			//run towards the player if the player is to far away and not looking at the A.I.
-		case "run":
-			animator.SetTrigger("run");
-			//stop running if the player can see the A.I.
-			if (inFOV()) {
-				animator.ResetTrigger("run");
-				state = "walk";
-				actionTimer = .2f;
-				Debug.Log("Changing states from run to walk");
-			}
-			desiredTheta = processAngle(thetaCorrection - angleBetween());
-			//check to see if the character is still to far away
-			if (Vector3.Distance(this.transform.position, theCamera.transform.position) > (medDistance - closeDistance) / 2f) {
-				transform.localRotation = Quaternion.Euler(0, desiredTheta, 0);
-				currentSpeed = runSpeed;
-				this.transform.position = new Vector3(this.transform.position.x + Time.deltaTime * currentSpeed * Mathf.Cos((thetaCorrection - this.transform.eulerAngles.y) * Mathf.PI / 180), this.transform.position.y, this.transform.position.z + Time.deltaTime * currentSpeed * Mathf.Sin((thetaCorrection - this.transform.eulerAngles.y) * Mathf.PI / 180));
-			}
-			// change state to walk
-			else {
-				state = "walk";
-				actionTimer = 3f;
-				Debug.Log("Changing states from run to walk");
-				animator.ResetTrigger("run");
-			}
-			break;
-			//sit still for awhile and occassionaly turn and walk somewhere
-		case "idle":
-			animator.SetTrigger("idle");
-			currentSpeed = 0f;
-			if (actionTimer > Time.deltaTime) {
-				actionTimer -= Time.deltaTime;
-			}
-			else {
-				actionTimer = 0;
-				//1 / walkChance is the chance the character will turn and walk after the action Timer has expired
-				//if walkChance is selected, change states to turn player Indepent
-				if (Random.Range(0, walkChance) == walkChance - 1) {
-					state = "turn";
-					playerDependent = "none";
-					desiredTheta = processAngle((this.transform.eulerAngles.y + Random.Range(-30, 30)));
-					Debug.Log("Changing states from idle to turn");
-					animator.ResetTrigger("idle");
-				}
-			}
-			break;
-			//turn in a specified direction
-		case "turn":
-			//playerDependent determines which direction the character will turn and what animation will play during the turn
-			switch (playerDependent) {
-			//turn toward the player to 'notice' them
-			case "toward":
-				animator.SetTrigger("walk");
-				desiredTheta = processAngle(thetaCorrection - angleBetween());
-				rotateObject(desiredTheta, noticeRotationSpeed);
-				//check if the current angle is close enough to the desiredAngle
-				//if so change states to turn away
-				if (Mathf.Abs(processAngle(this.transform.eulerAngles.y) - desiredTheta) < 3) {
-					state = "turn";
-					playerDependent = "away";
-					Debug.Log("Changing states from turn toward to turn away");
-					animator.ResetTrigger("walk");
-				}
-				break;
-				//turn away from the player after noticing them
-			case "away":
-				animator.SetTrigger("scared");
-				desiredTheta = processAngle(thetaCorrection - angleBetween() + 180);
-				rotateObject(processAngle(desiredTheta), noticeRotationSpeed * 1.5f);
-				//check if the current angle is close enough to the desiredAngle
-				//if so change states to scared run
-				if (Mathf.Abs(processAngle(this.transform.eulerAngles.y) - desiredTheta) < 3) {
-					state = "scared";
-					Debug.Log("Changing states from turn away to scared run");
-					animator.ResetTrigger("scared");
-				}
-				break;
-				//turn randomly while idling
-			case "none":
-				animator.SetTrigger("walk");
-				rotateObject(desiredTheta, rotationSpeed);
-				//check to see if the current angle is close enough to the desiredAngle
-				//if so change staets to walk
-				if (Mathf.Abs(this.transform.eulerAngles.y - desiredTheta) < 5) {
-					state = "walk";
-					actionTimer = Random.Range(2, 10);
-					Debug.Log("Changing states from turn neutral to walk");
-					animator.ResetTrigger("walk");
-				}
-				break;
-			}
-			break;
-			//run away from the player until a certain distance has been achieved
-		case "scared":
-			animator.SetTrigger("scared");
-			//if the distance has been achieved, change states to walk
-			if (Vector3.Distance(this.transform.position, theCamera.transform.position) > (medDistance - closeDistance) / 2f) {
-				state = "walk";
-				actionTimer = 5f; // walk in the same direction for 5 additional seconds
-				playerDependent = "none";
-				Debug.Log("Changing states from scared run to walk");
-				animator.ResetTrigger("scared");
-			}
-			//continue running
-			else {
-				accelerate(runSpeed);
-				this.transform.position = new Vector3(this.transform.position.x + Time.deltaTime * currentSpeed * Mathf.Cos((thetaCorrection - this.transform.eulerAngles.y) * Mathf.PI / 180), this.transform.position.y, this.transform.position.z + Time.deltaTime * currentSpeed * Mathf.Sin((thetaCorrection - this.transform.eulerAngles.y) * Mathf.PI / 180));
-			}
-			break;
+        // otherwise, run his AI
+        else
+        {
+            
+            //check to see if the character is too close to the player and not facing it and the A.I. is not already running away or about to run away
+            if (Vector3.Distance(theCamera.transform.position, this.transform.position) < tooClose && state
+                != "close" && state != "scared" && (state != "turn" || playerDependent == "none"))
+            {
+                state = "close";
+                previousX = theCamera.transform.position.x;
+                previousZ = theCamera.transform.position.z;
+                animator.ResetTrigger("walk");
+                animator.ResetTrigger("idle");
+                actionTimer = 0f;
+            }
+            //can the player to close to the A.I. and can the player see the A.I.
+            if (Vector3.Distance(theCamera.transform.position, this.transform.position) < closeDistance && state != "scared" && inFOV())
+            {
+                //change the state to turn
+                state = "turn";
+                if (playerDependent == "none")
+                {
+                    playerDependent = "toward";
+                    animator.ResetTrigger("idle");
+                }
+            }
+            //check to see if the character is too far away from the player
+            else if (Vector3.Distance(theCamera.transform.position, this.transform.position) > medDistance && state != "run" && !inFOV())
+                state = "run";
+            //ensures the character does not turn toward the character by accidnet
+            else
+                playerDependent = "none";
+            //Handles all the states the character can be in:
+            // walking, running, turning, and idling
+            switch (state)
+            {
+                //stick to the player
+                case "close":
+                    animator.SetTrigger("idle");
+                    //has the player moved since the last update
+                    if (previousZ - theCamera.transform.position.z != 0 || previousX - theCamera.transform.position.z != 0)
+                    {
+                        //has the player gotten closer to the A.I.
+                        if (Vector3.Distance(this.transform.position, new Vector3(previousX, this.transform.position.y, previousZ)) >= Vector3.Distance(this.transform.position, theCamera.transform.position))
+                        {
+                            //if so move the A.I. so that it is the same distance from the player as the last update
+                            this.transform.position = new Vector3(this.transform.position.x + theCamera.transform.position.x - previousX, this.transform.position.y, this.transform.position.z + theCamera.transform.position.z - previousZ);
+                        }
+                        previousX = theCamera.transform.position.x;
+                        previousZ = theCamera.transform.position.z;
+                    }
+                    //has the player moved far enough away to leave the close state
+                    if (Vector3.Distance(this.transform.position, theCamera.transform.position) > tooClose)
+                    {
+                        state = "idle";
+                        actionTimer = 3f;
+                    }
+                    break;
+                //walk in the direction the A.I. is currently facing
+                case "walk":
+                    //decrease walkTimer
+                    if (actionTimer > Time.deltaTime)
+                    {
+                        animator.SetTrigger("walk");
+                        actionTimer -= Time.deltaTime;
+                        accelerate(walkSpeed);
+                        this.transform.position = new Vector3(this.transform.position.x + Time.deltaTime * currentSpeed * Mathf.Cos((thetaCorrection - this.transform.eulerAngles.y) * Mathf.PI / 180), this.transform.position.y, this.transform.position.z + Time.deltaTime * currentSpeed * Mathf.Sin((thetaCorrection - this.transform.eulerAngles.y) * Mathf.PI / 180));
+                    }
+                    //change state to idle
+                    else {
+                        actionTimer = 3f;
+                        state = "idle";
+                        //Debug.Log("Changing states from Walk to Idle");
+                        animator.ResetTrigger("walk");
+                    }
+                    break;
+                //run towards the player if the player is to far away and not looking at the A.I.
+                case "run":
+                    animator.SetTrigger("run");
+                    //stop running if the player can see the A.I.
+                    if (inFOV())
+                    {
+                        animator.ResetTrigger("run");
+                        state = "walk";
+                        actionTimer = .2f;
+                        //Debug.Log("Changing states from run to walk");
+                    }
+                    desiredTheta = processAngle(thetaCorrection - angleBetween());
+                    //check to see if the character is still to far away
+                    if (Vector3.Distance(this.transform.position, theCamera.transform.position) > (medDistance - closeDistance) / 2f)
+                    {
+                        transform.localRotation = Quaternion.Euler(0, desiredTheta, 0);
+                        currentSpeed = runSpeed;
+                        this.transform.position = new Vector3(this.transform.position.x + Time.deltaTime * currentSpeed * Mathf.Cos((thetaCorrection - this.transform.eulerAngles.y) * Mathf.PI / 180), this.transform.position.y, this.transform.position.z + Time.deltaTime * currentSpeed * Mathf.Sin((thetaCorrection - this.transform.eulerAngles.y) * Mathf.PI / 180));
+                    }
+                    // change state to walk
+                    else {
+                        state = "walk";
+                        actionTimer = 3f;
+                        //Debug.Log("Changing states from run to walk");
+                        animator.ResetTrigger("run");
+                    }
+                    break;
+                //sit still for awhile and occassionaly turn and walk somewhere
+                case "idle":
+                    animator.SetTrigger("idle");
+                    currentSpeed = 0f;
+                    if (actionTimer > Time.deltaTime)
+                    {
+                        actionTimer -= Time.deltaTime;
+                    }
+                    else {
+                        actionTimer = 0;
+                        //1 / walkChance is the chance the character will turn and walk after the action Timer has expired
+                        //if walkChance is selected, change states to turn player Indepent
+                        if (Random.Range(0, walkChance) == walkChance - 1)
+                        {
+                            state = "turn";
+                            playerDependent = "none";
+                            desiredTheta = processAngle((this.transform.eulerAngles.y + Random.Range(-30, 30)));
+                            //Debug.Log("Changing states from idle to turn");
+                            animator.ResetTrigger("idle");
+                        }
+                    }
+                    break;
+                //turn in a specified direction
+                case "turn":
+                    //playerDependent determines which direction the character will turn and what animation will play during the turn
+                    switch (playerDependent)
+                    {
+                        //turn toward the player to 'notice' them
+                        case "toward":
+                            animator.SetTrigger("walk");
+                            desiredTheta = processAngle(thetaCorrection - angleBetween());
+                            rotateObject(desiredTheta, noticeRotationSpeed);
+                            //check if the current angle is close enough to the desiredAngle
+                            //if so change states to turn away
+                            if (Mathf.Abs(processAngle(this.transform.eulerAngles.y) - desiredTheta) < 3)
+                            {
+                                state = "turn";
+                                playerDependent = "away";
+                                //Debug.Log("Changing states from turn toward to turn away");
+                                animator.ResetTrigger("walk");
+                            }
+                            break;
+                        //turn away from the player after noticing them
+                        case "away":
+                            animator.SetTrigger("scared");
+                            desiredTheta = processAngle(thetaCorrection - angleBetween() + 180);
+                            rotateObject(processAngle(desiredTheta), noticeRotationSpeed * 1.5f);
+                            //check if the current angle is close enough to the desiredAngle
+                            //if so change states to scared run
+                            if (Mathf.Abs(processAngle(this.transform.eulerAngles.y) - desiredTheta) < 3)
+                            {
+                                state = "scared";
+                                //Debug.Log("Changing states from turn away to scared run");
+                                animator.ResetTrigger("scared");
+                            }
+                            break;
+                        //turn randomly while idling
+                        case "none":
+                            animator.SetTrigger("walk");
+                            rotateObject(desiredTheta, rotationSpeed);
+                            //check to see if the current angle is close enough to the desiredAngle
+                            //if so change staets to walk
+                            if (Mathf.Abs(this.transform.eulerAngles.y - desiredTheta) < 5)
+                            {
+                                state = "walk";
+                                actionTimer = Random.Range(2, 10);
+                                //Debug.Log("Changing states from turn neutral to walk");
+                                animator.ResetTrigger("walk");
+                            }
+                            break;
+                    }
+                    break;
+                //run away from the player until a certain distance has been achieved
+                case "scared":
+                    animator.SetTrigger("scared");
+                    //if the distance has been achieved, change states to walk
+                    if (Vector3.Distance(this.transform.position, theCamera.transform.position) > (medDistance - closeDistance) / 2f)
+                    {
+                        state = "walk";
+                        actionTimer = 5f; // walk in the same direction for 5 additional seconds
+                        playerDependent = "none";
+                        //Debug.Log("Changing states from scared run to walk");
+                        animator.ResetTrigger("scared");
+                    }
+                    //continue running
+                    else {
+                        accelerate(runSpeed);
+                        this.transform.position = new Vector3(this.transform.position.x + Time.deltaTime * currentSpeed * Mathf.Cos((thetaCorrection - this.transform.eulerAngles.y) * Mathf.PI / 180), this.transform.position.y, this.transform.position.z + Time.deltaTime * currentSpeed * Mathf.Sin((thetaCorrection - this.transform.eulerAngles.y) * Mathf.PI / 180));
+                    }
+                    break;
 
-		}
+            }
+        }
 
 	}
 
@@ -351,4 +373,30 @@ public class SteveController : MonoBehaviour {
 		}
 	}
 
+    // makes character explode upon impact with wall
+    void explosion()
+    {
+        // stop whatever the animator is playing
+        animator.Stop();
+
+        // start the timer
+        timeAfterCollision += Time.deltaTime;
+
+        // for each body part
+        foreach (GameObject part in bodyParts)
+        {
+            part.GetComponent<explosionTrigger>().explode();
+        }
+
+        if (timeAfterCollision > 6f) // if 6 seconds have passed
+        {
+            // Debug.Log("dead");
+            // decrement the number of instances of steves
+           // GameObject.Find("SpawnManager").GetComponent<SpawnManagerCode>().count--;
+            
+            // remove this instance of steve
+            gameObject.SetActive(false);
+
+        }
+    }
 }
