@@ -9,27 +9,19 @@ public class SpawnManagerCode : MonoBehaviour {
 	public int count = 0;
     public int max = 5;
     int spawnPointIndex;
-	public float waitTime = 15f;
+	public float waitTime = 20f;
 
 	void Start () {
 		InvokeRepeating ("Spawn", 0, time);
 	}
 
 	void Spawn () {
-            spawnPointIndex = Random.Range(0, spawnPoints.Length);
-            Instantiate (steve, spawnPoints [spawnPointIndex].position, spawnPoints [spawnPointIndex].rotation);
+		if (count < max) {
+			spawnPointIndex = Random.Range (0, spawnPoints.Length);
+			Instantiate (steve, spawnPoints [spawnPointIndex].position, spawnPoints [spawnPointIndex].rotation);
 			count++;
-
-		if (count == max) {
-			Debug.Log ("MAX");
-			CancelInvoke ("Spawn");
-			count++;
-		}
-
-		if (count > max && explosionTrigger.alive == false) {
-			Debug.Log ("Explosion");
-			Invoke ("Spawn", waitTime);
-			count = 5;
+		} else if (count == max && explosionTrigger.alive == false) {
+			InvokeRepeating ("Spawn", waitTime, time);
 		}
 	}
 }
