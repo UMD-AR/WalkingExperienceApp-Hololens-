@@ -7,7 +7,7 @@ public class SpawnManagerCode : MonoBehaviour {
 	public float time = 5f;
 	public Transform[] spawnPoints;
 	public int count = 0;
-    public int max = 5;
+    public int max = 1;
     int spawnPointIndex;
 	public float waitTime = 15f;
 

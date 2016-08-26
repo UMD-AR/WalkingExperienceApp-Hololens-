@@ -1,4 +1,4 @@
 sceneSetups:
-- path: Assets/Scene01.unity
+- path: C:/Users/Brian/Desktop/Project Thing/EWA_1.0.0/Assets/Scene01.unity
   isLoaded: 1
   isActive: 1

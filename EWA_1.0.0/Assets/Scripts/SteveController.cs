@@ -24,7 +24,7 @@ public class SteveController : MonoBehaviour {
 	float currentSpeed = 0f;
 	float acceleration;
 	float fov = 60;
-	float walkChance = 200; // 1 / walkchance is the chance the A.I. will stop idling and turn and walk
+	float walkChance = 20; // 1 / walkchance is the chance the A.I. will stop idling and turn and walk
 	string state = "idle";
 	string playerDependent = "none";
 	float cameraCorrection = 90f; // For some reason 0 degrees points the camera along the positive z axis (as opposed to the x)
@@ -344,21 +344,10 @@ public class SteveController : MonoBehaviour {
 	/*
      * Returns true if the A.I. is in theCamera's Field of View 
      */
-	bool inFOV() {
-		float correction = 0;
-		float xDis = this.transform.position.x - theCamera.transform.position.x;
-		float zDis = this.transform.position.z - theCamera.transform.position.z;
-		//ArcTan ranges from -90 to 90, this line with the addition of processAngle puts the angle in the correct quadrant
-		if (xDis < 0) {
-			correction = Mathf.PI;
-		}
-		float angle = processAngle((Mathf.Atan(zDis / xDis) + correction) * 180 / Mathf.PI);
-		//this line checks to see if the angle might potentially cross from 0 to 359 degrees
-		if (processAngle((cameraCorrection - theCamera.transform.eulerAngles.y) - fov / 2) < 0 || (processAngle(theCamera.transform.eulerAngles.y + cameraCorrection) + fov / 2) > 360)
-			//process Angle 2 can handle angles in this area
-			return (processAngle2((theCamera.transform.eulerAngles.y + cameraCorrection) + fov / 2) > processAngle2(angle) && processAngle2((theCamera.transform.eulerAngles.y + cameraCorrection) - fov / 2) < processAngle2(angle));
-		return (processAngle((cameraCorrection - theCamera.transform.eulerAngles.y) + fov / 2) > angle && (processAngle(cameraCorrection - theCamera.transform.eulerAngles.y) - fov / 2) < angle);
 
+	bool inFOV() { 
+		Vector3 isSeen = theCamera.WorldToViewportPoint(this.transform.position);
+		return isSeen.x >= 0 && isSeen.x <= 1 && isSeen.y >= 0 && isSeen.y <= 1 && isSeen.z >= 0;
 	}
 
 	/*
