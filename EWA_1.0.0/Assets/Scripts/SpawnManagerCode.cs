@@ -16,20 +16,15 @@ public class SpawnManagerCode : MonoBehaviour {
 	}
 
 	void Spawn () {
-            spawnPointIndex = Random.Range(0, spawnPoints.Length);
-            Instantiate (steve, spawnPoints [spawnPointIndex].position, spawnPoints [spawnPointIndex].rotation);
+		if (count < max) {
+			spawnPointIndex = Random.Range (0, spawnPoints.Length);
+			Instantiate (steve, spawnPoints [spawnPointIndex].position, spawnPoints [spawnPointIndex].rotation);
 			count++;
-
-		if (count == max) {
-			Debug.Log ("MAX");
-			CancelInvoke ("Spawn");
-			count++;
+		} else if (count == max && explosionTrigger.alive == false) {
+			InvokeRepeating ("Spawn", waitTime, time * 2);
 		}
 
-		if (count > max && explosionTrigger.alive == false) {
-			Debug.Log ("Explosion");
-			Invoke ("Spawn", waitTime);
-			count = 5;
-		}
+
+
 	}
 }

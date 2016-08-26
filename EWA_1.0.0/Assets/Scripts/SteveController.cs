@@ -392,7 +392,7 @@ public class SteveController : MonoBehaviour {
         {
             // Debug.Log("dead");
             // decrement the number of instances of steves
-           // GameObject.Find("SpawnManager").GetComponent<SpawnManagerCode>().count--;
+           GameObject.Find("SpawnManager").GetComponent<SpawnManagerCode>().count--;
             
             // remove this instance of steve
             gameObject.SetActive(false);
