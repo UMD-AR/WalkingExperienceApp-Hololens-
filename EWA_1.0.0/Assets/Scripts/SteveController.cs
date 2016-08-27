@@ -10,26 +10,27 @@ using System.Collections;
 
 public class SteveController : MonoBehaviour {
 
-	Animator animator;
+	public Animator animator;
 	Camera theCamera;
 	float closeDistance = 12.0f; // distance at which the A.I. will run from the player
 	float medDistance = 70f; // distance at which the A.I. will run toward the player
-	float actionTimer; // minimum time to perform an idling action i.e. idle or walk
+	public float actionTimer; // minimum time to perform an idling action i.e. idle or walk
 	float thetaCorrection = 180f; // necessary as the Minecraft is orientied so its back is facing 180 degrees
-	float rotationSpeed = 50f; // rotation speed during idle
-	float noticeRotationSpeed = 170f; // rotation speed when player detected
+	float rotationSpeed = 30f; // rotation speed during idle
+	float noticeRotationSpeed = 120f; // rotation speed when player detected
 	float desiredTheta;
 	float runSpeed = 14f;
 	float walkSpeed = 2f;
 	float currentSpeed = 0f;
 	float acceleration;
 	float fov = 60;
-	float walkChance = 20; // 1 / walkchance is the chance the A.I. will stop idling and turn and walk
-	string state = "idle";
+	float walkChance = .005f; // 1 / walkchance is the chance the A.I. will stop idling and turn and walk
+	public string state = "idle";
 	string playerDependent = "none";
 	float cameraCorrection = 90f; // For some reason 0 degrees points the camera along the positive z axis (as opposed to the x)
 	float tooClose = 7f;
 	float previousX, previousZ; // holds the previous position of the Camera, used to prevent the A.I. from getting to close
+	public bool steveHitWallSlowly;
 
     public bool collided = false;
     GameObject[] bodyParts;
@@ -49,6 +50,7 @@ public class SteveController : MonoBehaviour {
         }
         
         collided = false;
+		steveHitWallSlowly = false;
         timeAfterCollision = 0;
 
 	}
@@ -61,7 +63,6 @@ public class SteveController : MonoBehaviour {
      * If the player gets to far away from the A.I. and is not looking at the A.I.
      */
 	void Update() {
-
         if (collided)
         {
             explosion();
@@ -80,6 +81,7 @@ public class SteveController : MonoBehaviour {
                 animator.ResetTrigger("walk");
                 animator.ResetTrigger("idle");
                 actionTimer = 0f;
+                Debug.Log("State changed to close");
             }
             //can the player to close to the A.I. and can the player see the A.I.
             if (Vector3.Distance(theCamera.transform.position, this.transform.position) < closeDistance && state != "scared" && inFOV())
@@ -105,15 +107,18 @@ public class SteveController : MonoBehaviour {
                 //stick to the player
                 case "close":
                     animator.SetTrigger("idle");
-                    //has the player moved since the last update
-                    if (previousZ - theCamera.transform.position.z != 0 || previousX - theCamera.transform.position.z != 0)
+                    //has the player moved since the last updateer
+                    if (previousZ - theCamera.transform.position.z != 0 || previousX - theCamera.transform.position.x != 0)
                     {
                         //has the player gotten closer to the A.I.
-                        if (Vector3.Distance(this.transform.position, new Vector3(previousX, this.transform.position.y, previousZ)) >= Vector3.Distance(this.transform.position, theCamera.transform.position))
-                        {
-                            //if so move the A.I. so that it is the same distance from the player as the last update
-                            this.transform.position = new Vector3(this.transform.position.x + theCamera.transform.position.x - previousX, this.transform.position.y, this.transform.position.z + theCamera.transform.position.z - previousZ);
-                        }
+                        if (Vector3.Distance(this.transform.position, new Vector3(previousX, theCamera.transform.position.y, previousZ)) >= Vector3.Distance(this.transform.position, theCamera.transform.position)) {
+
+                            // Debug.Log("movement");
+                            //if so move the A.I. so that it is the same distance from the player as the last update, unless it has hit the wall slowly, in which case thier position will not change
+							if (!steveHitWallSlowly) {
+								this.transform.position = new Vector3(this.transform.position.x + theCamera.transform.position.x - previousX, this.transform.position.y, this.transform.position.z + theCamera.transform.position.z - previousZ);
+							}
+						}
                         previousX = theCamera.transform.position.x;
                         previousZ = theCamera.transform.position.z;
                     }
@@ -125,20 +130,21 @@ public class SteveController : MonoBehaviour {
                     }
                     break;
                 //walk in the direction the A.I. is currently facing
-                case "walk":
+			case "walk":
                     //decrease walkTimer
-                    if (actionTimer > Time.deltaTime)
-                    {
-                        animator.SetTrigger("walk");
-                        actionTimer -= Time.deltaTime;
-                        accelerate(walkSpeed);
-                        this.transform.position = new Vector3(this.transform.position.x + Time.deltaTime * currentSpeed * Mathf.Cos((thetaCorrection - this.transform.eulerAngles.y) * Mathf.PI / 180), this.transform.position.y, this.transform.position.z + Time.deltaTime * currentSpeed * Mathf.Sin((thetaCorrection - this.transform.eulerAngles.y) * Mathf.PI / 180));
-                    }
+				if (actionTimer > Time.deltaTime) {
+					if (!steveHitWallSlowly) {
+						animator.SetTrigger ("walk");
+						actionTimer -= Time.deltaTime;
+						accelerate (walkSpeed);
+						this.transform.position = new Vector3 (this.transform.position.x + Time.deltaTime * currentSpeed * Mathf.Cos ((thetaCorrection - this.transform.eulerAngles.y) * Mathf.PI / 180), this.transform.position.y, this.transform.position.z + Time.deltaTime * currentSpeed * Mathf.Sin ((thetaCorrection - this.transform.eulerAngles.y) * Mathf.PI / 180));
+					}
+				}
                     //change state to idle
                     else {
                         actionTimer = 3f;
                         state = "idle";
-                        //Debug.Log("Changing states from Walk to Idle");
+                        // Debug.Log("Changing states from Walk to Idle");
                         animator.ResetTrigger("walk");
                     }
                     break;
@@ -149,9 +155,8 @@ public class SteveController : MonoBehaviour {
                     if (inFOV())
                     {
                         animator.ResetTrigger("run");
-                        state = "walk";
                         actionTimer = .2f;
-                        //Debug.Log("Changing states from run to walk");
+                        // Debug.Log("Changing states from run to walk");
                     }
                     desiredTheta = processAngle(thetaCorrection - angleBetween());
                     //check to see if the character is still to far away
@@ -165,7 +170,7 @@ public class SteveController : MonoBehaviour {
                     else {
                         state = "walk";
                         actionTimer = 3f;
-                        //Debug.Log("Changing states from run to walk");
+                        // Debug.Log("Changing states from run to walk");
                         animator.ResetTrigger("run");
                     }
                     break;
@@ -181,12 +186,12 @@ public class SteveController : MonoBehaviour {
                         actionTimer = 0;
                         //1 / walkChance is the chance the character will turn and walk after the action Timer has expired
                         //if walkChance is selected, change states to turn player Indepent
-                        if (Random.Range(0, walkChance) == walkChance - 1)
+                        if (Random.Range(0, 1f) < walkChance)
                         {
                             state = "turn";
                             playerDependent = "none";
                             desiredTheta = processAngle((this.transform.eulerAngles.y + Random.Range(-30, 30)));
-                            //Debug.Log("Changing states from idle to turn");
+                            // Debug.Log("Changing states from idle to turn");
                             animator.ResetTrigger("idle");
                         }
                     }
@@ -207,7 +212,7 @@ public class SteveController : MonoBehaviour {
                             {
                                 state = "turn";
                                 playerDependent = "away";
-                                //Debug.Log("Changing states from turn toward to turn away");
+                                // Debug.Log("Changing states from turn toward to turn away");
                                 animator.ResetTrigger("walk");
                             }
                             break;
@@ -218,10 +223,10 @@ public class SteveController : MonoBehaviour {
                             rotateObject(processAngle(desiredTheta), noticeRotationSpeed * 1.5f);
                             //check if the current angle is close enough to the desiredAngle
                             //if so change states to scared run
-                            if (Mathf.Abs(processAngle(this.transform.eulerAngles.y) - desiredTheta) < 3)
+                            if (Mathf.Abs(processAngle(this.transform.eulerAngles.y) - desiredTheta) < 6)
                             {
                                 state = "scared";
-                                //Debug.Log("Changing states from turn away to scared run");
+                                // Debug.Log("Changing states from turn away to scared run");
                                 animator.ResetTrigger("scared");
                             }
                             break;
@@ -235,7 +240,7 @@ public class SteveController : MonoBehaviour {
                             {
                                 state = "walk";
                                 actionTimer = Random.Range(2, 10);
-                                //Debug.Log("Changing states from turn neutral to walk");
+                                // Debug.Log("Changing states from turn neutral to walk");
                                 animator.ResetTrigger("walk");
                             }
                             break;
@@ -250,7 +255,7 @@ public class SteveController : MonoBehaviour {
                         state = "walk";
                         actionTimer = 5f; // walk in the same direction for 5 additional seconds
                         playerDependent = "none";
-                        //Debug.Log("Changing states from scared run to walk");
+                        // Debug.Log("Changing states from scared run to walk");
                         animator.ResetTrigger("scared");
                     }
                     //continue running
@@ -341,24 +346,24 @@ public class SteveController : MonoBehaviour {
 		return bestAngle * 180 / Mathf.PI;
 	}
 
-	/*
+
+    /*
      * Returns true if the A.I. is in theCamera's Field of View 
      */
+    bool inFOV() {
+        Vector3 isSeen = theCamera.WorldToViewportPoint(this.transform.position);
+        return isSeen.x >= 0 && isSeen.x <= 1 && isSeen.y >= 0 && isSeen.y <= 1 && isSeen.z >= 0;
+    }
 
-	bool inFOV() { 
-		Vector3 isSeen = theCamera.WorldToViewportPoint(this.transform.position);
-		return isSeen.x >= 0 && isSeen.x <= 1 && isSeen.y >= 0 && isSeen.y <= 1 && isSeen.z >= 0;
-	}
-
-	/*
+    /*
      * Increase or decrease current speed until close enought to desired speed
      */
-	void accelerate(float desiredSpeed) {
+    void accelerate(float desiredSpeed) {
 		if (desiredSpeed > currentSpeed && Mathf.Abs(desiredSpeed - currentSpeed) > .3f) {
-			currentSpeed += acceleration;
+			currentSpeed += desiredSpeed * Time.deltaTime;
 		}
 		else if (desiredSpeed < currentSpeed && Mathf.Abs(desiredSpeed - currentSpeed) > .3f) { 
-			currentSpeed -= acceleration;
+			currentSpeed -= desiredSpeed * Time.deltaTime;
 		}
 	}
 
@@ -380,6 +385,7 @@ public class SteveController : MonoBehaviour {
         if (timeAfterCollision > 6f) // if 6 seconds have passed
         {
             // Debug.Log("dead");
+
             // decrement the number of instances of steves
            GameObject.Find("SpawnManager").GetComponent<SpawnManagerCode>().count--;
             

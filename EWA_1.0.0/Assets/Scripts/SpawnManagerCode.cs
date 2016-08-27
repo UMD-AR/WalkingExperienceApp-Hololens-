@@ -7,7 +7,7 @@ public class SpawnManagerCode : MonoBehaviour {
 	public float time = 5f;
 	public Transform[] spawnPoints;
 	public int count = 0;
-    public int max = 1;
+    public int max = 5;
     int spawnPointIndex;
 	public float waitTime = 15f;
 
@@ -23,8 +23,5 @@ public class SpawnManagerCode : MonoBehaviour {
 		} else if (count == max && explosionTrigger.alive == false) {
 			InvokeRepeating ("Spawn", waitTime, time * 2);
 		}
-
-
-
 	}
 }

@@ -31,11 +31,27 @@ public class explosionTrigger : MonoBehaviour
     void OnCollisionEnter(Collision collision)
     {
         // if steve hasn't collided with anything yet and collision calling this function is not with another body part or the floor
-        if (!steveCollided && !bodyPartOrFloor(collision.collider.name))
+		if (!steveCollided && !bodyPartOrFloor(collision.collider.name))
         {
-            // steve has now collided!
-            steveCollided = true;
-            steve.GetComponent<SteveController>().collided = steveCollided;
+			steveCollided = true;
+			// Debug.Log ("Kameron");
+			if (steve.GetComponent<SteveController> ().state.Equals ("scared")) {
+				Debug.Log ("explosion collision detected");
+				// steve has now collided!
+
+				steve.GetComponent<SteveController> ().collided = true;
+
+				collision.collider.
+
+			// otherwise, he hit the wall without running
+			} else {
+				steve.GetComponent<SteveController> ().animator.ResetTrigger ("walk");
+				steve.GetComponent<SteveController> ().animator.SetTrigger ("idle");
+				steve.GetComponent<SteveController> ().state = "idle";
+				steve.GetComponent<SteveController> ().steveHitWallSlowly= true;
+				Debug.Log ("steve's state: " + steve.GetComponent<SteveController>().state);
+				// and should just hit the wall and not go through
+			}
         }
     }
 
@@ -60,8 +76,6 @@ public class explosionTrigger : MonoBehaviour
             alreadyExploding = true;
             rb.useGravity = true;
             alive = false;
-            //GameObject torso = GameObject.Find("Torso"), leg = GameObject.Find("Right_Leg"); // create point of explosion between knees
-            //Vector3 explosionPoint = new Vector3(torso.transform.position.x, leg.transform.position.y, torso.transform.position.z);
             rb.AddExplosionForce(400f, steve.position, 10f);
         }
     }
