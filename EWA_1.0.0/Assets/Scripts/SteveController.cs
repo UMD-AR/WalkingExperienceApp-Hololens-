@@ -32,7 +32,8 @@ public class SteveController : MonoBehaviour {
 	float previousX, previousZ; // holds the previous position of the Camera, used to prevent the A.I. from getting to close
 	public bool steveHitWallSlowly;
 
-    public bool collided = false;
+    public bool goingToExplode;
+    bool collided; // boolean to show if steve has already exploded
     GameObject[] bodyParts;
     float timeAfterCollision;
 
@@ -49,7 +50,8 @@ public class SteveController : MonoBehaviour {
             bodyParts[i] = bodyParts[0].transform.GetChild(i - 1).gameObject;
         }
         
-        collided = false;
+        goingToExplode = false;
+        collided = true;
 		steveHitWallSlowly = false;
         timeAfterCollision = 0;
 
@@ -63,7 +65,7 @@ public class SteveController : MonoBehaviour {
      * If the player gets to far away from the A.I. and is not looking at the A.I.
      */
 	void Update() {
-        if (collided)
+        if (goingToExplode)
         {
             explosion();
         }
@@ -366,6 +368,46 @@ public class SteveController : MonoBehaviour {
 			currentSpeed -= desiredSpeed * Time.deltaTime;
 		}
 	}
+
+    void OnCollisionEnter(Collision collision)
+    {
+        // if steve hasn't collided with anything yet and the collision calling this function is not with another body part
+        if (!collided && !bodyPart(collision.collider.name))
+        {
+            // mark that the collision has occured so this if-block is only run once
+            collided = true;
+            
+            // if steve hit the wall while he was running
+            if (state.Equals("scared"))
+            {
+                // mark that steve is going to explode
+                goingToExplode = true;
+
+            // otherwise, he hit the wall without running
+            }
+            else {
+
+                // and should just hit the wall and not explode or go through 
+                animator.ResetTrigger("walk");
+                animator.SetTrigger("idle");
+                state = "idle";
+                steveHitWallSlowly = true;
+                // Debug.Log("steve's state: " + steve.GetComponent<SteveController>().state);
+            }
+        }
+    }
+
+    // this method determines if the string sent to it is one of the
+    // body parts of the main character or the floor
+    bool bodyPart(string s)
+    {
+        return s.Equals("Head")
+            || s.Equals("Torso")
+            || s.Equals("Right_Arm")
+            || s.Equals("Left_Arm")
+            || s.Equals("Right_Leg")
+            || s.Equals("Left_Leg");
+    }
 
     // makes character explode upon impact with wall
     void explosion()
