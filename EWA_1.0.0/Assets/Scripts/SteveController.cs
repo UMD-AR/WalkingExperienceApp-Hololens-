@@ -19,8 +19,8 @@ public class SteveController : MonoBehaviour {
 	float rotationSpeed = 30f; // rotation speed during idle
 	float noticeRotationSpeed = 120f; // rotation speed when player detected
 	float desiredTheta;
-	float runSpeed = 14f;
-	float walkSpeed = 2f;
+	float runSpeed = 0.6f;
+	float walkSpeed = 0.2f;
 	float currentSpeed = 0f;
 	float acceleration;
 	float fov = 60;

@@ -30,6 +30,8 @@ public class explosionTrigger : MonoBehaviour
     // OnCollisionEnter is called when there is a collision between two rigidbodies
     void OnCollisionEnter(Collision collision)
     {
+        return;
+
         // if steve hasn't collided with anything yet and collision calling this function is not with another body part or the floor
 		if (!steveCollided && !bodyPartOrFloor(collision.collider.name))
         {
@@ -40,9 +42,7 @@ public class explosionTrigger : MonoBehaviour
 				// steve has now collided!
 
 				steve.GetComponent<SteveController> ().collided = true;
-
-				collision.collider.
-
+                
 			// otherwise, he hit the wall without running
 			} else {
 				steve.GetComponent<SteveController> ().animator.ResetTrigger ("walk");
@@ -76,7 +76,7 @@ public class explosionTrigger : MonoBehaviour
             alreadyExploding = true;
             rb.useGravity = true;
             alive = false;
-            rb.AddExplosionForce(400f, steve.position, 10f);
+            rb.AddExplosionForce(200f, steve.position, 10f);
         }
     }
 }
